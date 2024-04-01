@@ -12,11 +12,33 @@
 
 //could change to inputs later
 //reminder to change populate also in that case
-#define NUM_KEYS 10000
-#define NUM_NEGATIVE_KEYS 60
+#define L 10000
+#define H 60
+#define PN 10
 
 //find with DFS
-void findHiddenKeys(int keys[], int start, int end, int H) {
+void findHiddenKeysDFS(int keys[], int start, int end, int NUM_NEGATIVE_KEYS) {
+//replace this loop numpber with PN amount you want to fork 
+    pid_t pid[PN];
+    for (int i = 0; i < PN; i++) {
+        if((pid[i] = fork()) < 0) {
+            perror("Failed to fork process");
+            exit(EXIT_SUCCESS);
+        }
+            
+        if (pid[i] > 0) {
+            //leave loop
+            break;
+        } 
+    }
+}
+
+void findKeyHelper() {
+
+}
+
+//find with BFS
+void findHiddenKeysBFS(int keys[], int start, int end, int NUM_NEGATIVE_KEYS) {
 
 }
 
@@ -27,19 +49,28 @@ int main(int argc, char const *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    int keys[NUM_KEYS];
+    int keys[L];
     FILE *fp1 = fopen("integers.txt", "r");
     if (fp1 == NULL) {
         perror("Error opening file");
         exit(EXIT_FAILURE);
     }
-    for (int i = 0; i < NUM_KEYS; i++) {
+    for (int i = 0; i < L; i++) {
         fscanf(fp1, "%d", &keys[i]);
     }
     fclose(fp1);
 
     //find keys
     //findHiddenKeys();
+    int pipe_fds[PN][2];
+    for (int i = 0; i < PN; i++) {
+        if (pipe(pipe_fds[i]) == -1) {
+            perror("Error creating pipe");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    //findHiddenKeysDFS(keys, int start, int end, H);
 
     exit(EXIT_SUCCESS);
 }
