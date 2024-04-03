@@ -13,12 +13,9 @@
 
 //could change to inputs later
 //reminder to change populate also in that case
-#define L 10000
-#define H 60
-#define PN 10
 
 //find with DFS
-void findHiddenKeysDFS(int keys[], int NUM_NEGATIVE_KEYS) {
+void findHiddenKeysDFS(int keys[], int NUM_NEGATIVE_KEYS, int L, int H, int PN) {
 //replace this loop numpber with PN amount you want to fork 
     pid_t pid[PN];
     int start; //start check for each process
@@ -67,15 +64,32 @@ void findKeyHelper() {
 }
 
 //find with BFS
-void findHiddenKeysBFS(int keys[], int NUM_NEGATIVE_KEYS) {
-
-}
 
 int main(int argc, char const *argv[]) {
     //for future use
-    if (argc != 3) {
-        perror("Need arguments for L and H");
+    if (argc != 4) {
+        perror("Need arguments for L, H, and PN");
         exit(EXIT_FAILURE);
+    }
+
+    int L = atoi(argv[1]);
+    int H = atoi(argv[2]);
+    int PN = atoi(argv[3]);
+
+
+    if (L < 10000) {
+        printf("L must be greater than or equal to 10000\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (H < 30 || H > 60) {
+        printf("H must be greater than or equal to 30 and less than or equal to 60\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (PN >= 1) {
+        printf("PN must be greater than or equal to 1\n");
+        exit(EXIT_FAILURE); 
     }
 
     int keys[L];
@@ -92,6 +106,19 @@ int main(int argc, char const *argv[]) {
     //find keys
     //findHiddenKeys();
     int pipe_fds[PN][2];
+
+    int pid;
+    int start = 0;
+    int end = 0;
+
+    int parentRoot = getpid();  //Head of tree
+    int returnArg = 1; 
+
+    for (int i = 0; i < PN; i++) {
+        //pipe(pipe_fds);
+    }
+
+
     for (int i = 0; i < PN; i++) {
         if (pipe(pipe_fds[i]) == -1) {
             perror("Error creating pipe");
@@ -99,7 +126,8 @@ int main(int argc, char const *argv[]) {
         }
     }
     //findHiddenKeysDFS(keys, int start, int end, H);
-    findHiddenKeysDFS(keys, H);
+    //findHiddenKeysDFS(keys, H);
+    //findHiddenKeysBFS(keys, H);
     //print resutls for each child
     //printf("Hi I'm process %d with return arg ??? and my parent is %d. I found hidden key %d at position A[%d].", getpid(), getppid(), something, something);
 
