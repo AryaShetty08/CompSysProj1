@@ -10,16 +10,13 @@
 #include <math.h>
 #include <time.h>
 
-#define SIZE 10000
-#define NUM_NEGATIVE_KEYS 60
-
 //Generate random positive integers
 int generatePositiveInt() {
-    return rand() % 1000 + 1; // change number to decide what range
+    return rand() % 10000 + 1; // change number to decide what range
 }
 
 //Generate random negative integers
-int generateNegativeInt() {
+int generateNegativeInt(int NUM_NEGATIVE_KEYS) {
     return -1 * (rand() % NUM_NEGATIVE_KEYS + 1); //based on H generate keys  
 }
 
@@ -72,6 +69,25 @@ float calculateAverage(int numbers[], int size) {
 
 //main function
 int main(int argc, char const *argv[]) {
+    
+    if (argc != 3) {
+        printf("Need two arguments L (number of positive integers) and H (number of hidden keys)\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int SIZE = atoi(argv[1]);
+    int NUM_NEGATIVE_KEYS = atoi(argv[2]);
+
+    if (SIZE < 10000) {
+        printf("L must be greater than or equal to 10000\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (NUM_NEGATIVE_KEYS < 30 || NUM_NEGATIVE_KEYS > 60) {
+        printf("H must be greater than or equal to 30 and less than or equal to 60\n");
+        exit(EXIT_FAILURE);
+    }
+
     int numbers[SIZE];
     srand(time(NULL)); //seed
 
@@ -80,7 +96,7 @@ int main(int argc, char const *argv[]) {
     }
 
     for (int i = SIZE - NUM_NEGATIVE_KEYS; i < SIZE; i++) {
-        numbers[i] = generateNegativeInt();
+        numbers[i] = generateNegativeInt(NUM_NEGATIVE_KEYS);
     }
 
     shuffleNumbers(numbers, SIZE);
