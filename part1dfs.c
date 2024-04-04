@@ -12,9 +12,10 @@
 #include <wait.h>
 
 int main(int argc, char const *argv[]) {
-    //for future use
     double timeSpent = 0.0;
     clock_t begin = clock();
+    
+    //make sure you have all arguments
     if (argc != 4) {
         perror("Need arguments for L, H, and PN");
         exit(EXIT_FAILURE);
@@ -40,6 +41,7 @@ int main(int argc, char const *argv[]) {
         exit(EXIT_FAILURE); 
     }
 
+    //set file pointers and array of keys to search 
     int keys[L];
     FILE *fp1 = fopen("integers.txt", "r");
     if (fp1 == NULL) {
@@ -50,6 +52,14 @@ int main(int argc, char const *argv[]) {
         fscanf(fp1, "%d", &keys[i]);
     }
     fclose(fp1);
+    
+    FILE* output;
+    output = fopen("output.txt", "a+");
+
+    if (output == NULL) {
+        perror("File could not be opened");
+        exit(EXIT_FAILURE);
+    }
 
     int pipe_fds[PN][2];
     int pipe_bds[PN][2];
@@ -61,6 +71,7 @@ int main(int argc, char const *argv[]) {
     int parentRoot = getpid();  //Head of tree
     int returnArg = 1; 
 
+    //create pipes for each child 
     for (int i = 0; i < PN; i++) {
         if (pipe(pipe_fds[i]) == -1) {
             perror("Error creating pipe");
@@ -73,6 +84,7 @@ int main(int argc, char const *argv[]) {
         }
     }
 
+    //Use idea of dfs and fork accordingly 
     for (int i = 0; i < PN; i++) {
         pid = fork();
 
@@ -81,8 +93,9 @@ int main(int argc, char const *argv[]) {
             exit(EXIT_FAILURE);
         }
         else if (pid == 0) {
-           
+           //show each child process created 
             printf("Hi I'm process %d with return arg %d and my parent is %d.\n", getpid(), returnArg + 1, getppid());
+            fprintf(output, "Hi I'm process %d with return arg %d and my parent is %d.\n", getpid(), returnArg + 1, getppid());
 
             returnArg++;
             start = end; //since you are on next process
@@ -90,49 +103,42 @@ int main(int argc, char const *argv[]) {
             if (end > L) { //make sure it doesn't go over the amount of integers 
                 end = L; //Set to max integers in keys 
             }
-
-            //check if the child is the last in PN
-            //if (i == (PN - 1)) {
-                //close(pipe_fds[i][0]); //close read end 
-                //close(pipe_bds[i+1][0]); 
+            if (end == L-1) {
+                end ++;
+            }
 
                 int max = 0;
                 double average = 0;
                 int count = 0;
 
+                //calculate the local max and average 
                 for (int j = start; j < end; j++) {
-                    //if (keys[j] < 0) {
-                    //    continue;
-                    //}
-
                     if (keys[j] > max) {
                         max = keys[j];
                     }
-
                     average += keys[j];
                     count++;
                 }
-                printf("COUNT in CHILD %d\n", count);
-                average = average/ (double) count;
-                write(pipe_fds[i+1][1], &max, sizeof(int)); //test
-                write(pipe_fds[i+1][1], &average, sizeof(double));
-                write(pipe_fds[i+1][1], &count, sizeof(count));
-                //close(pipe_fds[i+1][1]);
-                
-                //update how many H left to find
-                read(pipe_bds[i][0], &H, sizeof(int));
-                //close(pipe_bds[i][0]);
 
+                average = average/ (double) count;
+
+                //write local max, average, count to corresponding child pipe 
+                //also get the amount of hidden keys left to find
+                write(pipe_fds[i][1], &max, sizeof(int)); 
+                write(pipe_fds[i][1], &average, sizeof(double));
+                write(pipe_fds[i][1], &count, sizeof(count));
+                read(pipe_bds[i][0], &H, sizeof(int));
+
+                //search for keys in given child interval 
                 for (int i = start; i < end; i++) {
                     if (H != 0 && keys[i] < 0) {
                         printf("Hi I am Process %d with return arg %d. I found the hidden key in position A[%d].\n", getpid(), returnArg, i+1); 
+                        fprintf(output, "Hi I am Process %d with return arg %d. I found the hidden key in position A[%d].\n", getpid(), returnArg, i+1);
                         H--;
                     }
                 }
+                //let next child know how many keys left to find
                 write(pipe_bds[i+1][1], &H, sizeof(int));
-                //exit(EXIT_SUCCESS);
-            //}
-          
         }
         else { //we are in parent process
             int tempMax;
@@ -144,102 +150,44 @@ int main(int argc, char const *argv[]) {
 
             //check if start of chain 
             if (parentRoot != getpid()) {
-                //closes hella pipes
-               // count = 0;
-               // for (int j = start; j < end; j++) {
-                 //   if (keys[j] < 0) {
-                   //     continue; 
-                   // }
-
-                   // if (keys[j] > max) {
-                   //     max = keys[j];
-                   // }
-                   // average += keys[j];
-                   // count++;
-               // }
-
-                //average = average / (double) count;
-
-                read(pipe_fds[i-1][1], &max, sizeof(int));
-                read(pipe_fds[i-1][1], &average, sizeof(double));
-                read(pipe_fds[i-1][1], &count, sizeof(int));
-
-                printf("COUNT at %d: %d\n", i-1, count);
-                //write(pipe_fds[i-1][1], &max, sizeof(int));
-                //write(pipe_fds[i-1][1], &average, sizeof(double));
-                //write(pipe_fds[i-1][1], &count, sizeof(int));
-
-                read(pipe_fds[i][0], &tempMax, sizeof(int));
-                read(pipe_fds[i][0], &tempAverage, sizeof(double));
-                read(pipe_fds[i][0], &tempCount, sizeof(int));
-                //close(pipe_fds[i][0]);
-                printf("TEMPCOUNT at %d: %d\n", i, tempCount);
-
-                if (tempMax >= max) {
-                    max = tempMax;
-                }
-
-                average = (average * count + tempAverage * tempCount) / (double)(tempCount + count);
-
-                double newCount = (double)tempCount + count;
-                printf("NEWCOUNT: %f\n",newCount);
-
-                write(pipe_fds[i][1], &max, sizeof(int));
-                write(pipe_fds[i][1], &average, sizeof(double));
-                write(pipe_fds[i][1], &newCount, sizeof(int));
-                //close(pipe_fds[i+1][1]);
-
-                //read(pipe_bds[i-1][0], &H, sizeof(int));
-                //close(pipe_bds[i][0]);
-
-                //for (int i = start; i < end; i++) {
-                  //  if(H != 0 && keys[i] < 0) {
-                        //printf("Hi I am Process %d with return arg %d. I found the hidden key in position A[%d].\n", getpid(), returnArg, i); 
-                    //    H--;
-                   // }
-                //}
-                //write(pipe_bds[i][1], &H, sizeof(int));
-                //close(pipe_bds[i+1][1]);
+                //just wait for child terminate before exiting
                 wait(NULL);
                 exit(EXIT_SUCCESS);
             }
             else { //if it is parentroot
-                //close pipes here 
+                //write the hidden keys to find for child 
                 write(pipe_bds[i][1], &H, sizeof(int));
-                write(pipe_fds[i][1], &max, sizeof(int)); //test
-                write(pipe_fds[i][1], &average, sizeof(double));
-                write(pipe_fds[i][1], &count, sizeof(count));
 
                 wait(NULL); //wait for first child to finish 
-                read(pipe_fds[PN-1][0], &max, sizeof(int)); 
-                read(pipe_fds[PN-1][0], &average, sizeof(double));
-                read(pipe_fds[PN-1][0], &count, sizeof(int));
+                
+                //Check all the children pipes made to find the total max, average, and count of the integers array 
+                for (int k = 0; k < PN; k++) {
+                    read(pipe_fds[k][0], &tempMax, sizeof(int));
+                    read(pipe_fds[k][0], &tempAverage, sizeof(double));
+                    read(pipe_fds[k][0], &tempCount, sizeof(int));
+                    
+                    if (tempMax >= max) {
+                        max = tempMax;
+                    }
+                    
+                    if (tempAverage > 0) {
+                        average = (average * count + tempAverage * tempCount) / (double)(tempCount + count);
+                    }
 
-                int max2 = 0;
-                double average2 = 0;
-                int count2 = 0;
-
-                read(pipe_fds[PN-2][0], &max2, sizeof(int)); 
-                read(pipe_fds[PN-2][0], &average2, sizeof(double));
-                read(pipe_fds[PN-2][0], &count2, sizeof(int));
-
-                if (max2 >= max) {
-                    max = max2;
+                    count += tempCount;
                 }
-
-                printf("%d, %d\n",  count, count2);
-                double averageF = (average * count + average2 * count2) / (double)(count2 + count);
-
-                printf("Max: %d, Average: %f\n\n", max, averageF);
-                //close
+ 
+                //Print out all required statements and close files 
+                printf("Max: %d, Average: %f\n\n", max, average);
+                fprintf(output, "Max: %d, Average: %f\n\n", max, average);
                 clock_t end = clock();
                 timeSpent += (double)(end - begin) / CLOCKS_PER_SEC;
                 printf("\nThe program completed in %f seconds \n", timeSpent);
+                fprintf(output, "\nThe program completed in %f seconds \n", timeSpent);
+                fclose(output);
                 exit(EXIT_SUCCESS);
-
             }
         }
     }    
-    //printf("Hi I'm process %d with return arg ??? and my parent is %d. I found hidden key %d at position A[%d].", getpid(), getppid(), something, something);
     exit(EXIT_SUCCESS);
 }
